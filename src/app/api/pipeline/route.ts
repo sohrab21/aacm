@@ -164,6 +164,26 @@ End with a CONTENT TYPE CHECK.
 
 RULES: Never rewrite. Default mode is critical. No em dashes. Be specific.`;
 
+const REVISE_SYSTEM_PROMPT = `You are a senior content writer for Agile Academy, a leadership consulting firm. You are revising an existing draft based on Bar Raiser feedback and author notes.
+
+${AGILE_ACADEMY_POSITIONING}
+
+YOUR REVISION PRINCIPLES:
+
+1. PRESERVE WHAT WORKS: Do not rewrite sections that the reviewer praised or did not flag. Keep strong arguments, good case studies, and effective mechanisms intact.
+2. FIX WHAT WAS FLAGGED: Address every specific critique from the Bar Raiser. If the reviewer said "Miracle Worship," add the mechanism. If "unverified claim," add the source. If "not transferable," bridge to mid-level leaders.
+3. INCORPORATE AUTHOR NOTES: The author may provide specific priorities or additional context for this revision. These take precedence over your own judgment.
+4. MAINTAIN VOICE CONSISTENCY: The revised piece should read as one cohesive draft, not a patchwork of old and new writing.
+5. SAME QUALITY STANDARDS: All the original writing principles still apply. Mechanisms over mindset, transferability, enablement bridge, binary accountability, no em dashes.
+
+STYLE RULES:
+- Never use em dashes.
+- Write in clear, direct prose. Vary sentence length for rhythm.
+- Default to active voice.
+- No corporate jargon. Be opinionated. Take a clear position.
+
+Output the complete revised draft. Do not include meta-commentary about what you changed.`;
+
 const INTERVIEW_SYSTEM_PROMPT = `You are a content strategist preparing to write a piece for Agile Academy. Before writing, you interview the author to gather their unique perspective, real examples, and specific knowledge that will make the draft far stronger than a generic AI-written piece.
 
 You will receive a topic (and optionally a content type). Generate 3-5 short, targeted interview questions that draw out:
@@ -225,6 +245,11 @@ export async function POST(request: NextRequest) {
   // Phase 2: Write, review, revise based on selected topic
   if (phase === "write") {
     return handleWrite(body);
+  }
+
+  // Phase 3: Revise a previous draft based on Bar Raiser feedback
+  if (phase === "revise") {
+    return handleRevise(body);
   }
 
   return new Response(JSON.stringify({ error: "Invalid phase." }), {
@@ -438,6 +463,128 @@ ${draft}`;
           finalDraft: draft,
           finalReview: reviewText,
           message: `Draft complete. Scored ${rating ?? "?"}/10.`,
+        });
+        controller.close();
+      } catch (error: unknown) {
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred.";
+        sendSSE(controller, "error", { error: errorMessage });
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    },
+  });
+}
+
+async function handleRevise(body: {
+  previousDraft: string;
+  previousReview: string;
+  revisionNotes: string;
+  selectedTopic: string;
+  contentType: string;
+  researchContext: string;
+  revisionNumber: number;
+}) {
+  const {
+    previousDraft,
+    previousReview,
+    revisionNotes,
+    selectedTopic,
+    contentType,
+    researchContext,
+    revisionNumber,
+  } = body;
+
+  if (!previousDraft?.trim()) {
+    return new Response(
+      JSON.stringify({ error: "A previous draft is required for revision." }),
+      { status: 400, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        sendSSE(controller, "status", {
+          message: `Writing revision ${revisionNumber}...`,
+        });
+
+        const reviseMessage = `Content Type: ${contentType || "Website Article"}
+
+ORIGINAL TOPIC AND BRIEF:
+${selectedTopic}
+
+${researchContext ? `RESEARCH CONTEXT:\n${researchContext}\n` : ""}
+--- PREVIOUS DRAFT ---
+${previousDraft}
+
+--- BAR RAISER FEEDBACK ON PREVIOUS DRAFT ---
+${previousReview}
+
+${revisionNotes?.trim() ? `--- AUTHOR'S REVISION NOTES ---\n${revisionNotes}\n` : ""}
+Revise the piece to address the Bar Raiser's feedback${revisionNotes?.trim() ? " and the author's notes" : ""}. Preserve what works, fix what was flagged.`;
+
+        const reviseResult = await client.messages.create({
+          model: "claude-sonnet-4-6",
+          max_tokens: 4000,
+          temperature: 0.6,
+          system: REVISE_SYSTEM_PROMPT,
+          messages: [{ role: "user", content: reviseMessage }],
+        });
+
+        const revisedDraft =
+          reviseResult.content[0].type === "text"
+            ? reviseResult.content[0].text
+            : "";
+
+        sendSSE(controller, "status", {
+          message: `Reviewing revision ${revisionNumber}...`,
+        });
+
+        const reviewMessage = `Content Type: ${contentType || "Website Article"}
+
+Additional Context: This is REVISION ${revisionNumber} of an Agile Academy publication on the following topic: ${selectedTopic}
+
+--- PREVIOUS BAR RAISER FEEDBACK (check whether these issues were addressed) ---
+${previousReview}
+
+--- REVISED DRAFT TO REVIEW ---
+${revisedDraft}`;
+
+        const reviewResult = await client.messages.create({
+          model: "claude-sonnet-4-6",
+          max_tokens: 2000,
+          temperature: 0.3,
+          system: REVIEW_SYSTEM_PROMPT,
+          messages: [{ role: "user", content: reviewMessage }],
+        });
+
+        const reviewText =
+          reviewResult.content[0].type === "text"
+            ? reviewResult.content[0].text
+            : "";
+        const rating = parseRating(reviewText);
+
+        sendSSE(controller, "iteration", {
+          iteration: revisionNumber,
+          draft: revisedDraft,
+          review: reviewText,
+          rating,
+        });
+
+        sendSSE(controller, "complete", {
+          finalDraft: revisedDraft,
+          finalReview: reviewText,
+          message: `Revision ${revisionNumber} complete. Scored ${rating ?? "?"}/10.`,
         });
         controller.close();
       } catch (error: unknown) {

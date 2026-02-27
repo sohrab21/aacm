@@ -28,6 +28,11 @@ export interface StoredConversation {
   interviewQuestions?: string[];
   interviewAnswers?: string[];
   interviewTopic?: string;
+  awaitingRevisionNotes?: boolean;
+  revisionCount?: number;
+  lastDraftForRevision?: string;
+  lastReviewForRevision?: string;
+  lastTopicForRevision?: string;
   messages: SerializedChatMessage[];
   createdAt: string;
   updatedAt: string;

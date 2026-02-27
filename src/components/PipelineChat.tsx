@@ -177,6 +177,13 @@ export default function CreateChat({ onSendToReview }: CreateChatProps) {
   const [interviewTopic, setInterviewTopic] = useState("");
   const isInterviewing = interviewQuestions.length > 0 && interviewAnswers.length < interviewQuestions.length;
 
+  // Revision state
+  const [awaitingRevisionNotes, setAwaitingRevisionNotes] = useState(false);
+  const [revisionCount, setRevisionCount] = useState(1);
+  const [lastDraftForRevision, setLastDraftForRevision] = useState("");
+  const [lastReviewForRevision, setLastReviewForRevision] = useState("");
+  const [lastTopicForRevision, setLastTopicForRevision] = useState("");
+
   // Sidebar state
   const [conversations, setConversations] = useState<StoredConversation[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -219,11 +226,16 @@ export default function CreateChat({ onSendToReview }: CreateChatProps) {
       interviewQuestions: interviewQuestions.length > 0 ? interviewQuestions : undefined,
       interviewAnswers: interviewAnswers.length > 0 ? interviewAnswers : undefined,
       interviewTopic: interviewTopic || undefined,
+      awaitingRevisionNotes: awaitingRevisionNotes || undefined,
+      revisionCount: revisionCount > 1 ? revisionCount : undefined,
+      lastDraftForRevision: lastDraftForRevision || undefined,
+      lastReviewForRevision: lastReviewForRevision || undefined,
+      lastTopicForRevision: lastTopicForRevision || undefined,
       messages: serializeMessages(persistableMessages),
     });
     setConversationId(saved.id);
     setConversations(listConversations());
-  }, [messages, conversationId, contentType, lastResearchContext, currentProposals, awaitingSelection, interviewQuestions, interviewAnswers, interviewTopic]);
+  }, [messages, conversationId, contentType, lastResearchContext, currentProposals, awaitingSelection, interviewQuestions, interviewAnswers, interviewTopic, awaitingRevisionNotes, revisionCount, lastDraftForRevision, lastReviewForRevision, lastTopicForRevision]);
 
   useEffect(() => {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -252,6 +264,11 @@ export default function CreateChat({ onSendToReview }: CreateChatProps) {
     setInterviewQuestions([]);
     setInterviewAnswers([]);
     setInterviewTopic("");
+    setAwaitingRevisionNotes(false);
+    setRevisionCount(1);
+    setLastDraftForRevision("");
+    setLastReviewForRevision("");
+    setLastTopicForRevision("");
   };
 
   const handleLoadConversation = (id: string) => {
@@ -273,6 +290,11 @@ export default function CreateChat({ onSendToReview }: CreateChatProps) {
     setInterviewTopic(conv.interviewTopic ?? "");
     setInput("");
     setCopiedDraft(null);
+    setAwaitingRevisionNotes(conv.awaitingRevisionNotes ?? false);
+    setRevisionCount(conv.revisionCount ?? 1);
+    setLastDraftForRevision(conv.lastDraftForRevision ?? "");
+    setLastReviewForRevision(conv.lastReviewForRevision ?? "");
+    setLastTopicForRevision(conv.lastTopicForRevision ?? "");
 
     // If mid-interview, show the next question
     if (restoredQuestions.length > 0 && restoredAnswers.length < restoredQuestions.length) {
@@ -360,6 +382,8 @@ export default function CreateChat({ onSendToReview }: CreateChatProps) {
 
     if (isInterviewing) {
       handleInterviewAnswer(text);
+    } else if (awaitingRevisionNotes) {
+      startRevising(text);
     } else if (awaitingSelection) {
       handleTopicSelection(text);
     } else if (isDirectWriteRequest(text)) {
@@ -581,10 +605,130 @@ export default function CreateChat({ onSendToReview }: CreateChatProps) {
     startWriting(topic, interviewContext);
   };
 
+  // Shared SSE stream processor for write and revise phases
+  const processWriteStream = async (response: Response, statusId: string): Promise<{ draft: string; review: string } | null> => {
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error("No response stream.");
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let finalDraft = "";
+    let finalReview = "";
+
+    setMessages((prev) => prev.filter((m) => m.id !== statusId));
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      let eventType = "";
+      for (const line of lines) {
+        if (line.startsWith("event: ")) {
+          eventType = line.slice(7);
+        } else if (line.startsWith("data: ") && eventType) {
+          const data = JSON.parse(line.slice(6));
+
+          switch (eventType) {
+            case "status":
+              setMessages((prev) => {
+                const lastMsg = prev[prev.length - 1];
+                if (lastMsg?.type === "status") {
+                  const updated = [...prev];
+                  updated[updated.length - 1] = {
+                    ...lastMsg,
+                    content: data.message,
+                  };
+                  return updated;
+                }
+                return [
+                  ...prev,
+                  {
+                    id: msgId(),
+                    role: "system" as const,
+                    type: "status" as const,
+                    content: data.message,
+                    timestamp: new Date(),
+                  },
+                ];
+              });
+              break;
+
+            case "iteration":
+              setMessages((prev) => {
+                const filtered = prev.filter(
+                  (m) => !(m.type === "status" && m.role === "system")
+                );
+                return [
+                  ...filtered,
+                  {
+                    id: msgId(),
+                    role: "system" as const,
+                    type: "draft" as const,
+                    content: data.draft,
+                    review: data.review,
+                    rating: data.rating,
+                    iteration: data.iteration,
+                    isFinal: false,
+                    statusNote: `Iteration ${data.iteration}: scored ${data.rating ?? "?"}/10`,
+                    timestamp: new Date(),
+                  },
+                ];
+              });
+              break;
+
+            case "complete":
+              finalDraft = data.finalDraft;
+              finalReview = data.finalReview;
+              setMessages((prev) => {
+                const filtered = prev.filter(
+                  (m) => !(m.type === "status" && m.role === "system")
+                );
+                const lastDraftIdx = filtered.findLastIndex(
+                  (m) => m.type === "draft"
+                );
+                if (lastDraftIdx >= 0) {
+                  filtered[lastDraftIdx] = {
+                    ...(filtered[lastDraftIdx] as DraftMessage),
+                    content: data.finalDraft,
+                    review: data.finalReview,
+                    isFinal: true,
+                    statusNote: data.message,
+                  };
+                }
+                return filtered;
+              });
+              break;
+
+            case "error":
+              addMessage({
+                id: msgId(),
+                role: "system",
+                type: "text",
+                content: `Error: ${data.error}`,
+                timestamp: new Date(),
+              });
+              break;
+          }
+          eventType = "";
+        }
+      }
+    }
+
+    if (finalDraft) {
+      return { draft: finalDraft, review: finalReview };
+    }
+    return null;
+  };
+
   // Write phase
   const startWriting = async (topic: string, interviewContext?: string) => {
     setIsLoading(true);
     setAwaitingSelection(false);
+    setLastTopicForRevision(topic);
 
     const statusId = msgId();
     addMessage({
@@ -613,112 +757,12 @@ export default function CreateChat({ onSendToReview }: CreateChatProps) {
         throw new Error(result.error);
       }
 
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error("No response stream.");
+      const result = await processWriteStream(response, statusId);
 
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      setMessages((prev) => prev.filter((m) => m.id !== statusId));
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        let eventType = "";
-        for (const line of lines) {
-          if (line.startsWith("event: ")) {
-            eventType = line.slice(7);
-          } else if (line.startsWith("data: ") && eventType) {
-            const data = JSON.parse(line.slice(6));
-
-            switch (eventType) {
-              case "status":
-                setMessages((prev) => {
-                  const lastMsg = prev[prev.length - 1];
-                  if (lastMsg?.type === "status") {
-                    const updated = [...prev];
-                    updated[updated.length - 1] = {
-                      ...lastMsg,
-                      content: data.message,
-                    };
-                    return updated;
-                  }
-                  return [
-                    ...prev,
-                    {
-                      id: msgId(),
-                      role: "system" as const,
-                      type: "status" as const,
-                      content: data.message,
-                      timestamp: new Date(),
-                    },
-                  ];
-                });
-                break;
-
-              case "iteration":
-                setMessages((prev) => {
-                  const filtered = prev.filter(
-                    (m) => !(m.type === "status" && m.role === "system")
-                  );
-                  return [
-                    ...filtered,
-                    {
-                      id: msgId(),
-                      role: "system" as const,
-                      type: "draft" as const,
-                      content: data.draft,
-                      review: data.review,
-                      rating: data.rating,
-                      iteration: data.iteration,
-                      isFinal: false,
-                      statusNote: `Iteration ${data.iteration}: scored ${data.rating ?? "?"}/10`,
-                      timestamp: new Date(),
-                    },
-                  ];
-                });
-                break;
-
-              case "complete":
-                setMessages((prev) => {
-                  const updated = [...prev];
-                  const filtered = updated.filter(
-                    (m) => !(m.type === "status" && m.role === "system")
-                  );
-                  const lastDraftIdx = filtered.findLastIndex(
-                    (m) => m.type === "draft"
-                  );
-                  if (lastDraftIdx >= 0) {
-                    filtered[lastDraftIdx] = {
-                      ...(filtered[lastDraftIdx] as DraftMessage),
-                      content: data.finalDraft,
-                      review: data.finalReview,
-                      isFinal: true,
-                      statusNote: data.message,
-                    };
-                  }
-                  return filtered;
-                });
-                break;
-
-              case "error":
-                addMessage({
-                  id: msgId(),
-                  role: "system",
-                  type: "text",
-                  content: `Error: ${data.error}`,
-                  timestamp: new Date(),
-                });
-                break;
-            }
-            eventType = "";
-          }
-        }
+      if (result) {
+        setLastDraftForRevision(result.draft);
+        setLastReviewForRevision(result.review);
+        setRevisionCount(1);
       }
 
       addMessage({
@@ -726,7 +770,7 @@ export default function CreateChat({ onSendToReview }: CreateChatProps) {
         role: "system",
         type: "text",
         content:
-          "Done. You can copy the draft, send it to Review for a fresh Bar Raiser critique, or tell me what to write next.",
+          "Done. You can copy the draft, revise it with new notes, send it to Review for a fresh Bar Raiser critique, or tell me what to write next.",
         timestamp: new Date(),
       });
     } catch (err: unknown) {
@@ -740,6 +784,87 @@ export default function CreateChat({ onSendToReview }: CreateChatProps) {
     } finally {
       setIsLoading(false);
       setAwaitingSelection(false);
+    }
+  };
+
+  // Revision flow
+  const handleRequestRevision = (draft: string, review: string) => {
+    setLastDraftForRevision(draft);
+    setLastReviewForRevision(review);
+    setAwaitingRevisionNotes(true);
+
+    addMessage({
+      id: msgId(),
+      role: "system",
+      type: "text",
+      content:
+        "What should the revision focus on? Describe what to improve, or just press Enter for an automatic revision based on the Bar Raiser feedback.",
+      timestamp: new Date(),
+    });
+  };
+
+  const startRevising = async (notes: string) => {
+    setAwaitingRevisionNotes(false);
+    setIsLoading(true);
+
+    const nextRevision = revisionCount + 1;
+
+    const statusId = msgId();
+    addMessage({
+      id: statusId,
+      role: "system",
+      type: "status",
+      content: `Writing revision ${nextRevision}...`,
+      timestamp: new Date(),
+    });
+
+    try {
+      const response = await fetch("/api/pipeline", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phase: "revise",
+          previousDraft: lastDraftForRevision,
+          previousReview: lastReviewForRevision,
+          revisionNotes: notes,
+          selectedTopic: lastTopicForRevision,
+          contentType,
+          researchContext: lastResearchContext,
+          revisionNumber: nextRevision,
+        }),
+      });
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error);
+      }
+
+      const result = await processWriteStream(response, statusId);
+
+      if (result) {
+        setLastDraftForRevision(result.draft);
+        setLastReviewForRevision(result.review);
+        setRevisionCount(nextRevision);
+      }
+
+      addMessage({
+        id: msgId(),
+        role: "system",
+        type: "text",
+        content:
+          "Revision complete. You can copy the draft, revise again, send it to Review, or tell me what to write next.",
+        timestamp: new Date(),
+      });
+    } catch (err: unknown) {
+      addMessage({
+        id: msgId(),
+        role: "system",
+        type: "text",
+        content: `Something went wrong: ${err instanceof Error ? err.message : "Unknown error"}. Try again.`,
+        timestamp: new Date(),
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -1038,6 +1163,18 @@ export default function CreateChat({ onSendToReview }: CreateChatProps) {
                           </button>
                           <button
                             onClick={() =>
+                              handleRequestRevision(
+                                (msg as DraftMessage).content,
+                                (msg as DraftMessage).review
+                              )
+                            }
+                            disabled={isLoading}
+                            className="rounded-md border-2 border-accent px-3 py-1.5 text-xs font-medium text-accent transition-colors hover:bg-accent/10 disabled:opacity-40"
+                          >
+                            Revise
+                          </button>
+                          <button
+                            onClick={() =>
                               onSendToReview(
                                 (msg as DraftMessage).content,
                                 contentType
@@ -1081,6 +1218,8 @@ export default function CreateChat({ onSendToReview }: CreateChatProps) {
                 placeholder={
                   isInterviewing
                     ? 'Answer the question above, or type "skip" to start writing...'
+                    : awaitingRevisionNotes
+                    ? "Describe what the revision should focus on..."
                     : awaitingSelection
                     ? "Type a number (1-5) to pick a topic, or describe what you'd prefer..."
                     : "Describe what you want to write, or a content area to explore..."

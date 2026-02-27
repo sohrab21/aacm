@@ -18,6 +18,7 @@ Chat interface (`PipelineChat.tsx`) with a multi-phase pipeline:
 1. **Research** → web research + 5 differentiated topic proposals
 2. **Interview** → 3-5 targeted questions to gather author insights before writing
 3. **Write + Auto-Review** → generates article via SSE streaming, then auto-reviews with Bar Raiser standards
+4. **Revise** → click "Revise" on any final draft, provide notes on what to prioritize, get a rewritten draft that addresses the critique, then re-reviewed. Repeatable indefinitely.
 
 ### Review Mode
 Paste any draft → get a structured Bar Raiser review. Two review modes:
@@ -29,7 +30,7 @@ Content types: LinkedIn Post, Website Article, Whitepaper, Newspaper Article (Ge
 ## Key Files
 
 ### API Routes (server-side, all prompts live here)
-- `src/app/api/pipeline/route.ts` — Core pipeline: research, interview, write phases. SSE streaming for write phase. **This is the largest and most important file.**
+- `src/app/api/pipeline/route.ts` — Core pipeline: research, interview, write, revise phases. SSE streaming for write and revise phases. **This is the largest and most important file.**
 - `src/app/api/review/route.ts` — Standalone Bar Raiser review endpoint. Rating scale 1-10.
 - `src/app/api/create/route.ts` — Direct article creation (legacy/fallback).
 
