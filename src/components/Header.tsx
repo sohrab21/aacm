@@ -1,0 +1,49 @@
+"use client";
+
+import Image from "next/image";
+
+type Mode = "review" | "create";
+
+interface HeaderProps {
+  activeMode: Mode;
+  onModeChange: (mode: Mode) => void;
+}
+
+const MODES: { value: Mode; label: string }[] = [
+  { value: "create", label: "Create" },
+  { value: "review", label: "Review" },
+];
+
+export default function Header({ activeMode, onModeChange }: HeaderProps) {
+  return (
+    <header className="border-b border-border px-6 py-4 bg-white">
+      <div className="mx-auto max-w-5xl flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Image
+            src="/agile-academy-logo.png"
+            alt="Agile Academy"
+            width={140}
+            height={28}
+            priority
+          />
+          <span className="text-base font-semibold text-text-primary border-l border-border pl-3">Agile Academy Content Machine</span>
+        </div>
+        <nav className="flex gap-1 rounded-lg bg-surface p-1">
+          {MODES.map((mode) => (
+            <button
+              key={mode.value}
+              onClick={() => onModeChange(mode.value)}
+              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                activeMode === mode.value
+                  ? "bg-white text-text-primary shadow-sm"
+                  : "text-text-muted hover:text-text-primary"
+              }`}
+            >
+              {mode.label}
+            </button>
+          ))}
+        </nav>
+      </div>
+    </header>
+  );
+}
