@@ -4,12 +4,10 @@ import { useState, useCallback, useEffect } from "react";
 import Header from "@/components/Header";
 import ReviewForm from "@/components/ReviewForm";
 import ReviewOutput from "@/components/ReviewOutput";
-import CreateChat from "@/components/PipelineChat";
-
-type Mode = "review" | "create";
+// Create mode hidden for review-first launch — re-enable when ready:
+// import CreateChat from "@/components/PipelineChat";
 
 export default function Home() {
-  const [mode, setMode] = useState<Mode>("create");
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
@@ -28,6 +26,7 @@ export default function Home() {
   const [review, setReview] = useState<string | null>(null);
   const [isReviewLoading, setIsReviewLoading] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
+  // Keep prefillReview state for easy Create→Review re-enablement
   const [prefillReview, setPrefillReview] = useState<{
     draft: string;
     contentType: string;
@@ -65,28 +64,27 @@ export default function Home() {
     }
   };
 
-  // Create -> Review
-  const handleCreateToReview = useCallback(
-    (draft: string, contentType: string) => {
-      setPrefillReview({
-        draft,
-        contentType,
-        context:
-          "This draft was produced by the AACM content creator. Reviewing for final approval.",
-      });
-      setReview(null);
-      setReviewError(null);
-      setMode("review");
-    },
-    []
-  );
+  // Create → Review handoff — commented out for review-first launch
+  // const handleCreateToReview = useCallback(
+  //   (draft: string, contentType: string) => {
+  //     setPrefillReview({
+  //       draft,
+  //       contentType,
+  //       context:
+  //         "This draft was produced by the AACM content creator. Reviewing for final approval.",
+  //     });
+  //     setReview(null);
+  //     setReviewError(null);
+  //   },
+  //   []
+  // );
 
   return (
     <div className="min-h-screen bg-white">
-      <Header activeMode={mode} onModeChange={setMode} userEmail={userEmail} onSignOut={handleSignOut} />
+      <Header userEmail={userEmail} onSignOut={handleSignOut} />
       <main className="mx-auto px-6 py-10 max-w-5xl">
         {/* Review Mode */}
-        <div className={mode === "review" ? "" : "hidden"}>
+        <div>
           <ReviewForm
             onSubmit={handleReviewSubmit}
             isLoading={isReviewLoading}
@@ -107,12 +105,11 @@ export default function Home() {
           )}
         </div>
 
-        {/* Create Mode - Chat Interface */}
-        <div className={mode === "create" ? "" : "hidden"}>
-          <CreateChat
-            onSendToReview={handleCreateToReview}
-          />
+        {/* Create Mode — hidden for review-first launch. Re-enable when ready:
+        <div>
+          <CreateChat onSendToReview={handleCreateToReview} />
         </div>
+        */}
       </main>
     </div>
   );

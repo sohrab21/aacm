@@ -13,21 +13,23 @@ AI-powered content creation and Bar Raiser review tool for Agile Academy, a lead
 
 ## Architecture
 
-Two modes accessible from a single page:
+Review-only mode (Create mode code preserved but hidden from UI for review-first launch):
 
-### Create Mode (main workflow)
+### Review Mode (active)
+Paste any draft → get a structured Bar Raiser review. Two review modes:
+- **Critique + Directions** — full feedback with actionable improvement suggestions
+- **Critique Only** — focused critique without direction guidance
+
+Content types: LinkedIn Post, Website Article, Whitepaper, Newspaper Article (German), IMD Article.
+
+### Create Mode (hidden — re-enable when ready)
 Chat interface (`PipelineChat.tsx`) with a multi-phase pipeline:
 1. **Research** → web research + 5 differentiated topic proposals
 2. **Interview** → 3-5 targeted questions to gather author insights before writing
 3. **Write + Auto-Review** → generates article via SSE streaming, then auto-reviews with Bar Raiser standards
 4. **Revise** → click "Revise" on any final draft, provide notes on what to prioritize, get a rewritten draft that addresses the critique, then re-reviewed. Repeatable indefinitely.
 
-### Review Mode
-Paste any draft → get a structured Bar Raiser review. Two review modes:
-- **Critique + Directions** — full feedback with actionable improvement suggestions
-- **Critique Only** — focused critique without direction guidance
-
-Content types: LinkedIn Post, Website Article, Whitepaper, Newspaper Article (German), IMD Article.
+Code preserved in `PipelineChat.tsx`, `api/pipeline/route.ts`, `api/create/route.ts`, `lib/conversations.ts`. To re-enable: uncomment CreateChat import and Create div in `page.tsx`, restore mode toggle in `Header.tsx`.
 
 ## Key Files
 
@@ -54,15 +56,10 @@ Content types: LinkedIn Post, Website Article, Whitepaper, Newspaper Article (Ge
 - `src/components/PipelineChat.tsx` — Main chat interface (~1100 lines). Conversation sidebar, message rendering, SSE streaming, interview flow, proposal selection, content type selector.
 - `src/components/ReviewForm.tsx` — Review mode input form. Content type + review mode selectors.
 - `src/components/ReviewOutput.tsx` — Renders structured Bar Raiser review with section headers and improvement directions.
-- `src/components/Header.tsx` — Agile Academy branding + Create/Review mode toggle.
-
-### Legacy Components (pre-pipeline UI, kept for reference)
-- `src/components/PipelineForm.tsx`, `PipelineOutput.tsx` — Old pipeline form UI
-- `src/components/CreateForm.tsx`, `CreateOutput.tsx` — Old create form UI
-- `src/components/TopicProposals.tsx` — Old proposals display
+- `src/components/Header.tsx` — Agile Academy branding, user email, sign out button.
 
 ### App Shell
-- `src/app/page.tsx` — Wires Create and Review modes together. Handles Create-to-Review handoff.
+- `src/app/page.tsx` — Review-only UI. Create mode code commented out for easy re-enablement.
 - `src/app/layout.tsx` — Root layout, metadata, Inter font.
 - `src/app/globals.css` — Tailwind theme: green accent (#3fc16b), surfaces, typography.
 
