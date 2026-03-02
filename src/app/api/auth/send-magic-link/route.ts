@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
 
     const resend = new Resend(process.env.RESEND_API_KEY);
     await resend.emails.send({
-      from: "AACM <onboarding@resend.dev>", // TODO: change to noreply@scrum-academy.com after domain verification
+      from: "AACM <noreply@aacm.scrum-academy.team>",
       to: normalizedEmail,
       subject: "Sign in to AACM",
       html: `
