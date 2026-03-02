@@ -55,12 +55,21 @@ Content types: LinkedIn Post, Website Article, Whitepaper, Newspaper Article (Ge
 - `src/app/layout.tsx` — Root layout, metadata, Inter font.
 - `src/app/globals.css` — Tailwind theme: green accent (#3fc16b), surfaces, typography.
 
-## Brand Colors
+## Brand Colors (AA Styleguide)
 
-- Accent: `#3fc16b` (green)
-- Accent hover: `#35a85d`
-- Accent light: `#eef9f2`
+- Primary Green: `#3FC06B` (buttons, CTAs, success states)
+- Green hover: `#36a35b`
+- Green light: `#eef9f2`
+- Link Blue: `#173BE6` (text links)
+- Neutral: `#467AAA` (UI elements, filters, toggles)
+- Neutral Light: `#EDF4FA` (hover highlights)
 - Danger: `#E94560`
+- Text: `#222222` (dark), `#666666` (secondary), `#6C757D` (muted)
+- Borders: `#E1E1E1`
+- Surfaces: `#F8F9FA` (light bg), `#FDFDFD` (super light)
+- Font: System font stack (no external fonts)
+- Border radius: 4px (buttons), 8px (inputs), 12px (cards)
+- Shadows: Smooth multi-layer (see globals.css)
 
 ## Voice & Positioning (non-negotiable)
 
@@ -85,7 +94,7 @@ BRAVE_SEARCH_API_KEY=optional (falls back to Claude's training knowledge)
 - **Adjust Bar Raiser review criteria:** Edit system prompts in `src/app/api/review/route.ts`
 - **Adjust article writing style:** Edit system prompts in `src/app/api/pipeline/route.ts` (CREATE_SYSTEM_PROMPT) and `src/app/api/create/route.ts`
 - **Add new UI features:** Most chat logic is in `src/components/PipelineChat.tsx`
-- **Change branding/colors:** `src/app/globals.css` for theme, `src/components/Header.tsx` for logo
+- **Change branding/colors:** `src/app/globals.css` for theme tokens (follows AA Styleguide), `src/components/Header.tsx` for logo
 - **Add content types:** Update `contentType` options in `ReviewForm.tsx` and `PipelineChat.tsx`
 
 ## Sibling Project

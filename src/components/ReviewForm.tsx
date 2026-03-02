@@ -79,7 +79,7 @@ export default function ReviewForm({
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder="Paste your draft here..."
-          className="w-full h-full rounded-lg border border-border bg-input-bg p-4 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:ring-1 focus:ring-accent resize-none"
+          className="w-full h-full rounded-[0.75rem] border border-border bg-input-bg p-4 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:ring-1 focus:ring-accent resize-none"
         />
       </div>
 
@@ -91,12 +91,12 @@ export default function ReviewForm({
           onChange={(e) => setContext(e.target.value)}
           placeholder="Optional context, e.g. target audience or related content..."
           rows={2}
-          className="flex-1 rounded-lg border border-border bg-input-bg p-3 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:ring-1 focus:ring-accent resize-none"
+          className="flex-1 rounded-[0.5rem] border border-border bg-input-bg p-3 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:ring-1 focus:ring-accent resize-none"
         />
         <button
           type="submit"
           disabled={isLoading || !draft.trim()}
-          className="self-end rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed"
+          className="self-end rounded-[4px] bg-accent px-4 py-3 text-sm font-bold tracking-wide text-white transition-colors hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {isLoading ? (
             <span className="flex items-center gap-2">

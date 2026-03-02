@@ -929,7 +929,7 @@ export default function CreateChat({ onSendToReview }: CreateChatProps) {
               <button
                 onClick={handleNewConversation}
                 disabled={isLoading}
-                className="flex items-center gap-1 rounded-md bg-accent px-2.5 py-1 text-xs font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-40"
+                className="flex items-center gap-1 rounded-[4px] bg-accent px-2.5 py-1 text-xs font-bold tracking-wide text-white transition-colors hover:bg-accent-hover disabled:opacity-40"
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                   <line x1="12" y1="5" x2="12" y2="19" />
@@ -1104,7 +1104,7 @@ export default function CreateChat({ onSendToReview }: CreateChatProps) {
                     </div>
 
                     {/* Draft content */}
-                    <div className="rounded-lg border border-border bg-surface">
+                    <div className="rounded-[0.75rem] border border-border bg-surface shadow-[var(--shadow-s)]">
                       <div className="px-5 py-4 max-h-96 overflow-y-auto">
                         {(msg as DraftMessage).content
                           .split("\n")
@@ -1155,7 +1155,7 @@ export default function CreateChat({ onSendToReview }: CreateChatProps) {
                             onClick={() =>
                               handleCopyDraft((msg as DraftMessage).content)
                             }
-                            className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-light hover:text-text-primary"
+                            className="rounded-[4px] border border-border px-3 py-1.5 text-xs font-bold tracking-wide text-text-secondary transition-colors hover:bg-surface-light hover:text-text-primary"
                           >
                             {copiedDraft === (msg as DraftMessage).content
                               ? "Copied!"
@@ -1169,7 +1169,7 @@ export default function CreateChat({ onSendToReview }: CreateChatProps) {
                               )
                             }
                             disabled={isLoading}
-                            className="rounded-md border-2 border-accent px-3 py-1.5 text-xs font-medium text-accent transition-colors hover:bg-accent/10 disabled:opacity-40"
+                            className="rounded-[4px] border-2 border-accent px-3 py-1.5 text-xs font-bold tracking-wide text-accent transition-colors hover:bg-accent/10 disabled:opacity-40"
                           >
                             Revise
                           </button>
@@ -1180,7 +1180,7 @@ export default function CreateChat({ onSendToReview }: CreateChatProps) {
                                 contentType
                               )
                             }
-                            className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-light hover:text-text-primary"
+                            className="rounded-[4px] border border-border px-3 py-1.5 text-xs font-bold tracking-wide text-text-secondary transition-colors hover:bg-surface-light hover:text-text-primary"
                           >
                             Send to Review
                           </button>
@@ -1231,7 +1231,7 @@ export default function CreateChat({ onSendToReview }: CreateChatProps) {
               <button
                 onClick={handleSend}
                 disabled={isLoading || !input.trim()}
-                className="self-end rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed"
+                className="self-end rounded-[4px] bg-accent px-4 py-3 text-sm font-bold tracking-wide text-white transition-colors hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Send
               </button>

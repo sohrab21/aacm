@@ -155,7 +155,7 @@ export default function ReviewOutput({ review }: ReviewOutputProps) {
   };
 
   return (
-    <div className="rounded-lg border border-border bg-surface">
+    <div className="rounded-[0.75rem] border border-border bg-surface shadow-[var(--shadow-s)]">
       {/* Header with rating */}
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <h2 className="text-sm font-semibold uppercase tracking-widest text-text-muted">
@@ -170,7 +170,7 @@ export default function ReviewOutput({ review }: ReviewOutputProps) {
           )}
           <button
             onClick={handleCopy}
-            className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-light hover:text-text-primary"
+            className="rounded-[4px] border border-border px-3 py-1.5 text-xs font-bold tracking-wide text-text-secondary transition-colors hover:bg-surface-light hover:text-text-primary"
           >
             {copied ? "Copied!" : "Copy Review"}
           </button>

@@ -26,14 +26,14 @@ export default function Header({ activeMode, onModeChange }: HeaderProps) {
             height={28}
             priority
           />
-          <span className="text-base font-semibold text-text-primary border-l border-border pl-3">Agile Academy Content Machine</span>
+          <span className="text-base font-bold text-text-primary border-l border-border pl-3">Agile Academy Content Machine</span>
         </div>
-        <nav className="flex gap-1 rounded-lg bg-surface p-1">
+        <nav className="flex gap-1 rounded-[0.75rem] bg-surface p-1">
           {MODES.map((mode) => (
             <button
               key={mode.value}
               onClick={() => onModeChange(mode.value)}
-              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+              className={`px-4 py-1.5 text-sm font-bold tracking-wide rounded-[0.5rem] transition-colors ${
                 activeMode === mode.value
                   ? "bg-white text-text-primary shadow-sm"
                   : "text-text-muted hover:text-text-primary"
