@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Header from "@/components/Header";
 import ReviewForm from "@/components/ReviewForm";
 import ReviewOutput from "@/components/ReviewOutput";
@@ -10,6 +10,19 @@ type Mode = "review" | "create";
 
 export default function Home() {
   const [mode, setMode] = useState<Mode>("create");
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((res) => res.json())
+      .then((data) => { if (data.email) setUserEmail(data.email); })
+      .catch(() => {});
+  }, []);
+
+  const handleSignOut = useCallback(async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    window.location.href = "/login";
+  }, []);
 
   // Review state
   const [review, setReview] = useState<string | null>(null);
@@ -70,7 +83,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-white">
-      <Header activeMode={mode} onModeChange={setMode} />
+      <Header activeMode={mode} onModeChange={setMode} userEmail={userEmail} onSignOut={handleSignOut} />
       <main className="mx-auto px-6 py-10 max-w-5xl">
         {/* Review Mode */}
         <div className={mode === "review" ? "" : "hidden"}>

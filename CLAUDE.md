@@ -8,6 +8,8 @@ AI-powered content creation and Bar Raiser review tool for Agile Academy, a lead
 - **Anthropic Claude API** (claude-sonnet-4-6) for all AI features
 - **Brave Search API** (optional) for web research
 - **localStorage** for conversation persistence (no database)
+- **Resend** for magic link login emails
+- **jose** for JWT token handling (Edge-compatible)
 
 ## Architecture
 
@@ -33,6 +35,15 @@ Content types: LinkedIn Post, Website Article, Whitepaper, Newspaper Article (Ge
 - `src/app/api/pipeline/route.ts` — Core pipeline: research, interview, write, revise phases. SSE streaming for write and revise phases. **This is the largest and most important file.**
 - `src/app/api/review/route.ts` — Standalone Bar Raiser review endpoint. Rating scale 1-10.
 - `src/app/api/create/route.ts` — Direct article creation (legacy/fallback).
+
+### Auth
+- `src/lib/auth.ts` — JWT + cookie utilities (create/verify tokens, set/clear cookies, domain check)
+- `src/proxy.ts` — Route protection (Next.js 16 proxy): redirects unauthenticated users to /login
+- `src/app/login/page.tsx` — Login page with email input and "check your email" state
+- `src/app/api/auth/send-magic-link/route.ts` — Validates email domain, creates 15-min JWT, sends email via Resend
+- `src/app/api/auth/verify/route.ts` — Verifies magic link token, sets 7-day session cookie, redirects to /
+- `src/app/api/auth/logout/route.ts` — Clears session cookie
+- `src/app/api/auth/me/route.ts` — Returns current user's email
 
 ### Domain Logic
 - `src/lib/positioning.ts` — Agile Academy philosophy, distinctive positions, proprietary frameworks, voice characteristics, and existing content topics. **Edit this when the firm publishes new content or updates positioning.**
@@ -86,7 +97,18 @@ Content types: LinkedIn Post, Website Article, Whitepaper, Newspaper Article (Ge
 ```
 ANTHROPIC_API_KEY=required
 BRAVE_SEARCH_API_KEY=optional (falls back to Claude's training knowledge)
+JWT_SECRET=required (generate with: openssl rand -hex 32)
+RESEND_API_KEY=required (from resend.com)
+NEXT_PUBLIC_APP_URL=required (e.g. https://aacm.vercel.app)
 ```
+
+## Authentication
+
+Magic link login restricted to `@scrum-academy.com` emails. No database needed.
+
+**Flow:** User enters email → receives magic link via Resend → clicks link → JWT session cookie set for 7 days.
+
+**Security:** Magic link tokens expire in 15 minutes. Session cookies are HTTP-only, Secure in production, SameSite=Lax. Email domain validated at both send and verify steps. To revoke all sessions: rotate JWT_SECRET.
 
 ## Common Development Tasks
 
