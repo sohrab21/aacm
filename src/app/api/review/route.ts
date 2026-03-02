@@ -1,5 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import { reviews } from "@/lib/db/schema";
+import { getSessionEmail } from "@/lib/auth";
 
 const SYSTEM_PROMPT_BASE = `You are the "Bar Raiser" Editor for Agile Academy, a leadership consulting firm. Your job is to review content drafts against rigorous editorial standards. You are NOT a cheerleader. You are the toughest editor in the room.
 
@@ -212,7 +215,43 @@ ${draft}`;
     const reviewText =
       message.content[0].type === "text" ? message.content[0].text : "";
 
-    return NextResponse.json({ review: reviewText });
+    // Parse rating from review text
+    let rating: number | null = null;
+    const ratingMatch = reviewText.match(
+      /\bRATING[:\s]*(\d{1,2})\s*(?:\/\s*10|out of 10)/i
+    );
+    if (ratingMatch) {
+      rating = parseInt(ratingMatch[1], 10);
+    } else {
+      const altMatch = reviewText.match(/(\d{1,2})\s*\/\s*10/);
+      if (altMatch) rating = parseInt(altMatch[1], 10);
+    }
+
+    // Persist review to database
+    let reviewId: string | null = null;
+    try {
+      const email = await getSessionEmail();
+      if (email) {
+        const [inserted] = await db
+          .insert(reviews)
+          .values({
+            userEmail: email,
+            contentType: contentType || "LinkedIn Post",
+            reviewMode: reviewMode || "critique_with_directions",
+            draft,
+            context: context?.trim() || "",
+            review: reviewText,
+            rating,
+          })
+          .returning({ id: reviews.id });
+        reviewId = inserted.id;
+      }
+    } catch (dbError) {
+      console.error("Failed to persist review:", dbError);
+      // Non-fatal: still return the review even if DB save fails
+    }
+
+    return NextResponse.json({ review: reviewText, reviewId });
   } catch (error: unknown) {
     const errorMessage =
       error instanceof Error ? error.message : "An unexpected error occurred.";

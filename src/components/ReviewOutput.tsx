@@ -4,6 +4,9 @@ import { useState } from "react";
 
 interface ReviewOutputProps {
   review: string;
+  contentType?: string;
+  draft?: string;
+  createdAt?: string;
 }
 
 function parseRating(review: string): number | null {
@@ -144,7 +147,7 @@ function renderReviewContent(review: string) {
   return elements;
 }
 
-export default function ReviewOutput({ review }: ReviewOutputProps) {
+export default function ReviewOutput({ review, contentType, draft, createdAt }: ReviewOutputProps) {
   const [copied, setCopied] = useState(false);
   const rating = parseRating(review);
 
@@ -152,6 +155,44 @@ export default function ReviewOutput({ review }: ReviewOutputProps) {
     await navigator.clipboard.writeText(review);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleExport = () => {
+    const date = createdAt
+      ? new Date(createdAt).toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })
+      : new Date().toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
+
+    const lines = [
+      `# Bar Raiser Review`,
+      ``,
+      `**Date:** ${date}`,
+    ];
+    if (contentType) lines.push(`**Content Type:** ${contentType}`);
+    if (rating !== null) lines.push(`**Rating:** ${rating}/10`);
+    lines.push(``);
+
+    if (draft) {
+      lines.push(`## Draft`, ``, draft, ``);
+    }
+
+    lines.push(`## Review`, ``, review, ``);
+
+    const markdown = lines.join("\n");
+    const blob = new Blob([markdown], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `review-${date.replace(/\s+/g, "-").replace(/,/g, "").toLowerCase()}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -168,6 +209,12 @@ export default function ReviewOutput({ review }: ReviewOutputProps) {
               <span className="text-sm text-text-muted">/10</span>
             </span>
           )}
+          <button
+            onClick={handleExport}
+            className="rounded-[4px] border border-border px-3 py-1.5 text-xs font-bold tracking-wide text-text-secondary transition-colors hover:bg-surface-light hover:text-text-primary"
+          >
+            Export .md
+          </button>
           <button
             onClick={handleCopy}
             className="rounded-[4px] border border-border px-3 py-1.5 text-xs font-bold tracking-wide text-text-secondary transition-colors hover:bg-surface-light hover:text-text-primary"

@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import Header from "@/components/Header";
 import ReviewForm from "@/components/ReviewForm";
 import ReviewOutput from "@/components/ReviewOutput";
+import ReviewHistory from "@/components/ReviewHistory";
 // Create mode hidden for review-first launch — re-enable when ready:
 // import CreateChat from "@/components/PipelineChat";
 
@@ -33,6 +34,16 @@ export default function Home() {
     context: string;
   } | null>(null);
 
+  // Review metadata (for export and history loading)
+  const [reviewMetadata, setReviewMetadata] = useState<{
+    contentType: string;
+    draft: string;
+    createdAt: string;
+  } | null>(null);
+
+  // History refresh counter
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
   // Review handler
   const handleReviewSubmit = async (data: {
     contentType: string;
@@ -44,6 +55,7 @@ export default function Home() {
     setReviewError(null);
     setReview(null);
     setPrefillReview(null);
+    setReviewMetadata(null);
 
     try {
       const response = await fetch("/api/review", {
@@ -55,6 +67,12 @@ export default function Home() {
       if (!response.ok)
         throw new Error(result.error || "Something went wrong.");
       setReview(result.review);
+      setReviewMetadata({
+        contentType: data.contentType,
+        draft: data.draft,
+        createdAt: new Date().toISOString(),
+      });
+      setRefreshTrigger((n) => n + 1);
     } catch (err: unknown) {
       setReviewError(
         err instanceof Error ? err.message : "An unexpected error occurred."
@@ -63,6 +81,24 @@ export default function Home() {
       setIsReviewLoading(false);
     }
   };
+
+  // Load a review from history
+  const handleLoadReview = useCallback(async (id: string) => {
+    try {
+      const res = await fetch(`/api/reviews/${id}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setReview(data.review);
+      setReviewMetadata({
+        contentType: data.contentType,
+        draft: data.draft,
+        createdAt: data.createdAt,
+      });
+      setReviewError(null);
+    } catch {
+      // Silently fail
+    }
+  }, []);
 
   // Create → Review handoff — commented out for review-first launch
   // const handleCreateToReview = useCallback(
@@ -100,10 +136,20 @@ export default function Home() {
           )}
           {review && (
             <div className="mt-8">
-              <ReviewOutput review={review} />
+              <ReviewOutput
+                review={review}
+                contentType={reviewMetadata?.contentType}
+                draft={reviewMetadata?.draft}
+                createdAt={reviewMetadata?.createdAt}
+              />
             </div>
           )}
         </div>
+
+        <ReviewHistory
+          onSelect={handleLoadReview}
+          refreshTrigger={refreshTrigger}
+        />
 
         {/* Create Mode — hidden for review-first launch. Re-enable when ready:
         <div>

@@ -7,7 +7,8 @@ AI-powered content creation and Bar Raiser review tool for Agile Academy, a lead
 - **Next.js 16.1.6** (App Router) + **TypeScript** + **Tailwind CSS 4** + **React 19**
 - **Anthropic Claude API** (claude-sonnet-4-6) for all AI features
 - **Brave Search API** (optional) for web research
-- **localStorage** for conversation persistence (no database)
+- **Vercel Postgres + Drizzle ORM** for review persistence
+- **localStorage** for conversation persistence (Create mode only)
 - **Resend** for magic link login emails
 - **jose** for JWT token handling (Edge-compatible)
 
@@ -21,6 +22,8 @@ Paste any draft → get a structured Bar Raiser review. Two review modes:
 - **Critique Only** — focused critique without direction guidance
 
 Content types: LinkedIn Post, Website Article, Whitepaper, Newspaper Article (German), IMD Article.
+
+Reviews are persisted to Vercel Postgres. Users can browse past reviews via the collapsible Review History panel and export any review as a markdown file.
 
 ### Create Mode (hidden — re-enable when ready)
 Chat interface (`PipelineChat.tsx`) with a multi-phase pipeline:
@@ -37,6 +40,15 @@ Code preserved in `PipelineChat.tsx`, `api/pipeline/route.ts`, `api/create/route
 - `src/app/api/pipeline/route.ts` — Core pipeline: research, interview, write, revise phases. SSE streaming for write and revise phases. **This is the largest and most important file.**
 - `src/app/api/review/route.ts` — Standalone Bar Raiser review endpoint. Rating scale 1-10.
 - `src/app/api/create/route.ts` — Direct article creation (legacy/fallback).
+
+### Database
+- `src/lib/db/schema.ts` — `reviews` table definition (Drizzle ORM)
+- `src/lib/db/index.ts` — Database connection (postgres.js + Drizzle)
+- `drizzle.config.ts` — Drizzle Kit config (migrations, schema path)
+
+### Review History API
+- `src/app/api/reviews/route.ts` — GET /api/reviews (list user's reviews, newest first, limit 50)
+- `src/app/api/reviews/[id]/route.ts` — GET /api/reviews/:id (full review detail, scoped to user)
 
 ### Auth
 - `src/lib/auth.ts` — JWT + cookie utilities (create/verify tokens, set/clear cookies, domain check)
@@ -55,7 +67,8 @@ Code preserved in `PipelineChat.tsx`, `api/pipeline/route.ts`, `api/create/route
 ### UI Components
 - `src/components/PipelineChat.tsx` — Main chat interface (~1100 lines). Conversation sidebar, message rendering, SSE streaming, interview flow, proposal selection, content type selector.
 - `src/components/ReviewForm.tsx` — Review mode input form. Content type + review mode selectors.
-- `src/components/ReviewOutput.tsx` — Renders structured Bar Raiser review with section headers and improvement directions.
+- `src/components/ReviewOutput.tsx` — Renders structured Bar Raiser review with section headers, improvement directions, copy and markdown export.
+- `src/components/ReviewHistory.tsx` — Collapsible panel showing past reviews. Lazy-fetches on first open, re-fetches after new submissions.
 - `src/components/Header.tsx` — Agile Academy branding, user email, sign out button.
 
 ### App Shell
@@ -97,6 +110,7 @@ BRAVE_SEARCH_API_KEY=optional (falls back to Claude's training knowledge)
 JWT_SECRET=required (generate with: openssl rand -hex 32)
 RESEND_API_KEY=required (from resend.com)
 NEXT_PUBLIC_APP_URL=required (e.g. https://aacm.vercel.app)
+DATABASE_URL=required (Vercel Postgres connection string)
 ```
 
 ## Authentication
