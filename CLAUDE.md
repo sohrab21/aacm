@@ -38,17 +38,17 @@ Code preserved in `PipelineChat.tsx`, `api/pipeline/route.ts`, `api/create/route
 
 ### API Routes (server-side, all prompts live here)
 - `src/app/api/pipeline/route.ts` — Core pipeline: research, interview, write, revise phases. SSE streaming for write and revise phases. **This is the largest and most important file.**
-- `src/app/api/review/route.ts` — Standalone Bar Raiser review endpoint. Rating scale 1-10.
+- `src/app/api/review/route.ts` — Standalone Bar Raiser review endpoint. Rating scale 1-10. Injects reference examples per content type from `reference-examples.ts`.
 - `src/app/api/create/route.ts` — Direct article creation (legacy/fallback).
 
 ### Database
-- `src/lib/db/schema.ts` — `reviews` table definition (Drizzle ORM)
+- `src/lib/db/schema.ts` — `reviews` table definition (Drizzle ORM). Columns: id, userEmail, contentType, reviewMode, draft, context, review, rating, overrideRating, overrideNotes, createdAt
 - `src/lib/db/index.ts` — Database connection (postgres.js + Drizzle)
 - `drizzle.config.ts` — Drizzle Kit config (migrations, schema path)
 
 ### Review History API
 - `src/app/api/reviews/route.ts` — GET /api/reviews (list user's reviews, newest first, limit 50)
-- `src/app/api/reviews/[id]/route.ts` — GET /api/reviews/:id (full review detail, scoped to user)
+- `src/app/api/reviews/[id]/route.ts` — GET /api/reviews/:id (full review detail) + PATCH (override rating/notes), scoped to user
 
 ### Auth
 - `src/lib/auth.ts` — JWT + cookie utilities (create/verify tokens, set/clear cookies, domain check)
@@ -61,14 +61,15 @@ Code preserved in `PipelineChat.tsx`, `api/pipeline/route.ts`, `api/create/route
 
 ### Domain Logic
 - `src/lib/positioning.ts` — Agile Academy philosophy, distinctive positions, proprietary frameworks, voice characteristics, and existing content topics. **Edit this when the firm publishes new content or updates positioning.**
+- `src/lib/reference-examples.ts` — Curated published text excerpts per content type (LinkedIn Post, Whitepaper, Newspaper Article). Injected into Bar Raiser system prompt as quality benchmarks. **Add new examples when the firm publishes approved content for missing types (IMD Article, Website Article).**
 - `src/lib/search.ts` — Brave Search integration for content landscape research.
 - `src/lib/conversations.ts` — localStorage CRUD for conversation history. Storage key: `aacm_conversations`.
 
 ### UI Components
 - `src/components/PipelineChat.tsx` — Main chat interface (~1100 lines). Conversation sidebar, message rendering, SSE streaming, interview flow, proposal selection, content type selector.
 - `src/components/ReviewForm.tsx` — Review mode input form. Content type + review mode selectors.
-- `src/components/ReviewOutput.tsx` — Renders structured Bar Raiser review with section headers, improvement directions, copy and markdown export.
-- `src/components/ReviewHistory.tsx` — Collapsible panel showing past reviews. Lazy-fetches on first open, re-fetches after new submissions.
+- `src/components/ReviewOutput.tsx` — Renders structured Bar Raiser review with section headers, improvement directions, copy and markdown export. Includes override rating UI (set/edit your own rating + notes for saved reviews).
+- `src/components/ReviewHistory.tsx` — Collapsible panel showing past reviews. Lazy-fetches on first open, re-fetches after new submissions. Shows override rating alongside AI rating when present.
 - `src/components/Header.tsx` — Agile Academy branding, user email, sign out button.
 
 ### App Shell
@@ -129,6 +130,8 @@ Magic link login restricted to `@scrum-academy.com` emails. No database needed.
 - **Add new UI features:** Most chat logic is in `src/components/PipelineChat.tsx`
 - **Change branding/colors:** `src/app/globals.css` for theme tokens (follows AA Styleguide), `src/components/Header.tsx` for logo
 - **Add content types:** Update `contentType` options in `ReviewForm.tsx` and `PipelineChat.tsx`
+- **Add reference examples for new content types:** Edit `src/lib/reference-examples.ts` — add an entry keyed by the content type name with a title and the full approved text
+- **Override ratings (feedback loop):** Users can set their own rating (1-10) + notes on any saved review via the UI. Data stored in `override_rating` / `override_notes` columns. PATCH `/api/reviews/:id`
 
 ## Sibling Project
 

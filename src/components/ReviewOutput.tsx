@@ -7,6 +7,10 @@ interface ReviewOutputProps {
   contentType?: string;
   draft?: string;
   createdAt?: string;
+  reviewId?: string | null;
+  overrideRating?: number | null;
+  overrideNotes?: string | null;
+  onOverrideSaved?: () => void;
 }
 
 function parseRating(review: string): number | null {
@@ -147,9 +151,24 @@ function renderReviewContent(review: string) {
   return elements;
 }
 
-export default function ReviewOutput({ review, contentType, draft, createdAt }: ReviewOutputProps) {
+export default function ReviewOutput({
+  review,
+  contentType,
+  draft,
+  createdAt,
+  reviewId,
+  overrideRating,
+  overrideNotes,
+  onOverrideSaved,
+}: ReviewOutputProps) {
   const [copied, setCopied] = useState(false);
   const rating = parseRating(review);
+
+  // Override state
+  const [showOverrideForm, setShowOverrideForm] = useState(false);
+  const [editRating, setEditRating] = useState<number | "">(overrideRating ?? "");
+  const [editNotes, setEditNotes] = useState(overrideNotes ?? "");
+  const [saving, setSaving] = useState(false);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(review);
@@ -223,6 +242,97 @@ export default function ReviewOutput({ review, contentType, draft, createdAt }: 
           </button>
         </div>
       </div>
+
+      {/* Override rating */}
+      {reviewId && (
+        <div className="border-b border-border px-6 py-3">
+          {!showOverrideForm && overrideRating == null && (
+            <button
+              onClick={() => {
+                setEditRating("");
+                setEditNotes("");
+                setShowOverrideForm(true);
+              }}
+              className="text-xs font-medium text-text-muted hover:text-text-primary transition-colors"
+            >
+              Set your rating
+            </button>
+          )}
+          {!showOverrideForm && overrideRating != null && (
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-medium text-text-muted">Your rating:</span>
+              <span className="text-sm font-bold" style={{ color: "#467AAA" }}>
+                {overrideRating}<span className="text-xs text-text-muted">/10</span>
+              </span>
+              {overrideNotes && (
+                <span className="text-xs text-text-secondary">{overrideNotes}</span>
+              )}
+              <button
+                onClick={() => {
+                  setEditRating(overrideRating);
+                  setEditNotes(overrideNotes ?? "");
+                  setShowOverrideForm(true);
+                }}
+                className="text-xs font-medium text-text-muted hover:text-text-primary transition-colors ml-auto"
+              >
+                Edit
+              </button>
+            </div>
+          )}
+          {showOverrideForm && (
+            <div className="flex items-center gap-3">
+              <select
+                value={editRating}
+                onChange={(e) => setEditRating(e.target.value ? parseInt(e.target.value, 10) : "")}
+                className="rounded-[4px] border border-border px-2 py-1 text-sm bg-white"
+              >
+                <option value="">Rating</option>
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                  <option key={n} value={n}>{n}/10</option>
+                ))}
+              </select>
+              <input
+                type="text"
+                value={editNotes}
+                onChange={(e) => setEditNotes(e.target.value)}
+                placeholder="Notes (optional)"
+                className="flex-1 rounded-[4px] border border-border px-3 py-1 text-sm"
+              />
+              <button
+                disabled={editRating === "" || saving}
+                onClick={async () => {
+                  setSaving(true);
+                  try {
+                    const res = await fetch(`/api/reviews/${reviewId}`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        overrideRating: editRating || null,
+                        overrideNotes: editNotes.trim() || null,
+                      }),
+                    });
+                    if (res.ok) {
+                      setShowOverrideForm(false);
+                      onOverrideSaved?.();
+                    }
+                  } finally {
+                    setSaving(false);
+                  }
+                }}
+                className="rounded-[4px] bg-accent px-3 py-1 text-xs font-bold text-white hover:bg-accent-hover transition-colors disabled:opacity-50"
+              >
+                {saving ? "Saving..." : "Save"}
+              </button>
+              <button
+                onClick={() => setShowOverrideForm(false)}
+                className="text-xs text-text-muted hover:text-text-primary transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Review content */}
       <div className="px-6 py-5">{renderReviewContent(review)}</div>

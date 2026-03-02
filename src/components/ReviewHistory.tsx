@@ -7,6 +7,7 @@ interface ReviewSummary {
   contentType: string;
   reviewMode: string;
   rating: number | null;
+  overrideRating: number | null;
   draftPreview: string;
   createdAt: string;
 }
@@ -130,14 +131,27 @@ export default function ReviewHistory({
                         </span>
                       </div>
                     </div>
-                    {r.rating !== null && (
-                      <span
-                        className={`text-lg font-bold ${getRatingColor(r.rating)} shrink-0`}
-                      >
-                        {r.rating}
-                        <span className="text-xs text-text-muted">/10</span>
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {r.overrideRating != null && (
+                        <span
+                          className="text-lg font-bold shrink-0"
+                          style={{ color: "#467AAA" }}
+                          title="Your rating"
+                        >
+                          {r.overrideRating}
+                          <span className="text-xs text-text-muted">/10</span>
+                        </span>
+                      )}
+                      {r.rating !== null && (
+                        <span
+                          className={`${r.overrideRating != null ? "text-sm text-text-muted line-through" : "text-lg font-bold " + getRatingColor(r.rating)} shrink-0`}
+                          title="AI rating"
+                        >
+                          {r.rating}
+                          {r.overrideRating == null && <span className="text-xs text-text-muted">/10</span>}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </button>
               ))}

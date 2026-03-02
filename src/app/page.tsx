@@ -41,6 +41,11 @@ export default function Home() {
     createdAt: string;
   } | null>(null);
 
+  // Override rating state
+  const [reviewId, setReviewId] = useState<string | null>(null);
+  const [overrideRating, setOverrideRating] = useState<number | null>(null);
+  const [overrideNotes, setOverrideNotes] = useState<string | null>(null);
+
   // History refresh counter
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
@@ -56,6 +61,9 @@ export default function Home() {
     setReview(null);
     setPrefillReview(null);
     setReviewMetadata(null);
+    setReviewId(null);
+    setOverrideRating(null);
+    setOverrideNotes(null);
 
     try {
       const response = await fetch("/api/review", {
@@ -67,6 +75,7 @@ export default function Home() {
       if (!response.ok)
         throw new Error(result.error || "Something went wrong.");
       setReview(result.review);
+      setReviewId(result.reviewId ?? null);
       setReviewMetadata({
         contentType: data.contentType,
         draft: data.draft,
@@ -89,6 +98,9 @@ export default function Home() {
       if (!res.ok) return;
       const data = await res.json();
       setReview(data.review);
+      setReviewId(data.id);
+      setOverrideRating(data.overrideRating ?? null);
+      setOverrideNotes(data.overrideNotes ?? null);
       setReviewMetadata({
         contentType: data.contentType,
         draft: data.draft,
@@ -141,6 +153,20 @@ export default function Home() {
                 contentType={reviewMetadata?.contentType}
                 draft={reviewMetadata?.draft}
                 createdAt={reviewMetadata?.createdAt}
+                reviewId={reviewId}
+                overrideRating={overrideRating}
+                overrideNotes={overrideNotes}
+                onOverrideSaved={async () => {
+                  if (reviewId) {
+                    const res = await fetch(`/api/reviews/${reviewId}`);
+                    if (res.ok) {
+                      const data = await res.json();
+                      setOverrideRating(data.overrideRating ?? null);
+                      setOverrideNotes(data.overrideNotes ?? null);
+                    }
+                  }
+                  setRefreshTrigger((n) => n + 1);
+                }}
               />
             </div>
           )}

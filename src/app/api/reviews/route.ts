@@ -16,6 +16,7 @@ export async function GET() {
       contentType: reviews.contentType,
       reviewMode: reviews.reviewMode,
       rating: reviews.rating,
+      overrideRating: reviews.overrideRating,
       draft: reviews.draft,
       createdAt: reviews.createdAt,
     })
@@ -29,6 +30,7 @@ export async function GET() {
     contentType: r.contentType,
     reviewMode: r.reviewMode,
     rating: r.rating,
+    overrideRating: r.overrideRating,
     draftPreview: r.draft.length > 100 ? r.draft.slice(0, 100) + "..." : r.draft,
     createdAt: r.createdAt.toISOString(),
   }));

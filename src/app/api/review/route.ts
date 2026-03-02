@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { reviews } from "@/lib/db/schema";
 import { getSessionEmail } from "@/lib/auth";
+import { REFERENCE_EXAMPLES } from "@/lib/reference-examples";
 
 const SYSTEM_PROMPT_BASE = `You are the "Bar Raiser" Editor for Agile Academy, a leadership consulting firm. Your job is to review content drafts against rigorous editorial standards. You are NOT a cheerleader. You are the toughest editor in the room.
 
@@ -189,7 +190,13 @@ export async function POST(request: NextRequest) {
         ? OUTPUT_FORMAT_CRITIQUE_ONLY
         : OUTPUT_FORMAT_WITH_DIRECTIONS;
 
-    const systemPrompt = SYSTEM_PROMPT_BASE + "\n" + outputFormat;
+    let systemPrompt = SYSTEM_PROMPT_BASE + "\n" + outputFormat;
+
+    // Inject reference example for the content type if available
+    const refExample = REFERENCE_EXAMPLES[contentType || ""];
+    if (refExample) {
+      systemPrompt += `\n\nREFERENCE EXAMPLE (${contentType}):\n\nThe following is a published, approved piece ("${refExample.title}"). Use its structure, tone, and mechanism-density as your quality benchmark when rating.\n\n---\n${refExample.text}\n---`;
+    }
 
     const userMessage = `Content Type: ${contentType || "LinkedIn Post"}
 

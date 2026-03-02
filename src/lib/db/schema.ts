@@ -19,6 +19,8 @@ export const reviews = pgTable(
     context: text("context").default(""),
     review: text("review").notNull(),
     rating: integer("rating"),
+    overrideRating: integer("override_rating"),
+    overrideNotes: text("override_notes"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [
