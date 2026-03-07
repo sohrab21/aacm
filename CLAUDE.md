@@ -62,6 +62,7 @@ Code preserved in `PipelineChat.tsx`, `api/pipeline/route.ts`, `api/create/route
 ### Domain Logic
 - `src/lib/positioning.ts` — Agile Academy philosophy, distinctive positions, proprietary frameworks, voice characteristics, and existing content topics. **Edit this when the firm publishes new content or updates positioning.**
 - `src/lib/reference-examples.ts` — Curated published text excerpts per content type (LinkedIn Post, Whitepaper, Newspaper Article). Injected into Bar Raiser system prompt as quality benchmarks. **Add new examples when the firm publishes approved content for missing types (IMD Article, Website Article).**
+- `src/lib/knowledge-base.ts` — Condensed knowledge base (~3-5k tokens) distilled from 78 Agile Leader course transcripts. Contains frameworks (Expert/Achiever/Catalyst, Hackman, Lencioni, CVF), case studies (Tesla, Apple, Haier, Amazon, Netflix, Nucor, Southwest), Sohrab's distinctive positions, and concrete tools. Injected into Bar Raiser system prompt only in "Critique + Directions" mode so improvement directions can reference specific course content. **Edit when course content is updated or new frameworks/case studies are added.**
 - `src/lib/search.ts` — Brave Search integration for content landscape research.
 - `src/lib/conversations.ts` — localStorage CRUD for conversation history. Storage key: `aacm_conversations`.
 
@@ -131,6 +132,7 @@ Magic link login restricted to `@scrum-academy.com` emails. No database needed.
 - **Change branding/colors:** `src/app/globals.css` for theme tokens (follows AA Styleguide), `src/components/Header.tsx` for logo
 - **Add content types:** Update `contentType` options in `ReviewForm.tsx` and `PipelineChat.tsx`
 - **Add reference examples for new content types:** Edit `src/lib/reference-examples.ts` — add an entry keyed by the content type name with a title and the full approved text
+- **Update course knowledge base:** Edit `src/lib/knowledge-base.ts` — add new frameworks, case studies, or positions. Keep total under ~5k tokens. This content is injected into "Critique + Directions" reviews only.
 - **Override ratings (feedback loop):** Users can set their own rating (1-10) + notes on any saved review via the UI. Data stored in `override_rating` / `override_notes` columns. PATCH `/api/reviews/:id`
 
 ## Sibling Project

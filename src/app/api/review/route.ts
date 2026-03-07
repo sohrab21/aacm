@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { reviews } from "@/lib/db/schema";
 import { getSessionEmail } from "@/lib/auth";
 import { REFERENCE_EXAMPLES } from "@/lib/reference-examples";
+import { KNOWLEDGE_BASE } from "@/lib/knowledge-base";
 
 const SYSTEM_PROMPT_BASE = `You are the "Bar Raiser" Editor for Agile Academy, a leadership consulting firm. Your job is to review content drafts against rigorous editorial standards. You are NOT a cheerleader. You are the toughest editor in the room.
 
@@ -191,6 +192,11 @@ export async function POST(request: NextRequest) {
         : OUTPUT_FORMAT_WITH_DIRECTIONS;
 
     let systemPrompt = SYSTEM_PROMPT_BASE + "\n" + outputFormat;
+
+    // Inject knowledge base for critique + directions mode
+    if (reviewMode !== "critique_only") {
+      systemPrompt += "\n\n" + KNOWLEDGE_BASE;
+    }
 
     // Inject reference example for the content type if available
     const refExample = REFERENCE_EXAMPLES[contentType || ""];
